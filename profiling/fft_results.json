@@ -1,0 +1,76 @@
+{
+  "fft_3d": {
+    "jax": {
+      "64x64x32": {
+        "mean_ms": 0.28668749991993536,
+        "std_ms": 0.04239924252496222,
+        "min_ms": 0.24112500068440568,
+        "backend": "cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 4.30031249879903
+      },
+      "128x128x64": {
+        "mean_ms": 2.185818700127129,
+        "std_ms": 0.2162002610409269,
+        "min_ms": 1.960499999768217,
+        "backend": "cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 32.787280501906935
+      },
+      "256x256x128": {
+        "mean_ms": 16.252693650039873,
+        "std_ms": 0.7853922391854764,
+        "min_ms": 15.469083000425599,
+        "backend": "cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 243.7904047505981
+      }
+    },
+    "numpy_cpu": {
+      "64x64x32": {
+        "mean_ms": 1.44855219996316,
+        "std_ms": 0.013975619750766253,
+        "min_ms": 1.4273339984356426,
+        "backend": "numpy_cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 21.7282829994474
+      },
+      "128x128x64": {
+        "mean_ms": 13.504452100005437,
+        "std_ms": 0.11980872867559955,
+        "min_ms": 13.329249999515014,
+        "backend": "numpy_cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 202.56678150008156
+      },
+      "256x256x128": {
+        "mean_ms": 127.63118945013048,
+        "std_ms": 1.1404864120192606,
+        "min_ms": 126.29220800045005,
+        "backend": "numpy_cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 1914.4678417519572
+      }
+    }
+  },
+  "hero_run_estimates": {
+    "64x64x32": {
+      "etdrk4_ms": 21.73,
+      "total_days": 0.038,
+      "within_ceiling": true,
+      "source": "numpy_cpu float64"
+    },
+    "128x128x64": {
+      "etdrk4_ms": 202.57,
+      "total_days": 0.352,
+      "within_ceiling": true,
+      "source": "numpy_cpu float64"
+    },
+    "256x256x128": {
+      "etdrk4_ms": 1914.47,
+      "total_days": 3.324,
+      "within_ceiling": true,
+      "source": "numpy_cpu float64"
+    }
+  }
+}

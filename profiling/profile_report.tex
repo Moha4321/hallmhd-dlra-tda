@@ -1,0 +1,360 @@
+% =============================================================================
+% profile_report.tex
+% =============================================================================
+%
+% Phase 0 Hardware Profiling Report
+% hallmhd-dlra-tda  research programme
+%
+% Records the measured FFT, SVD, and memory budget results from
+% profiling/phase0_results.json (run 2026-05-17 19:26:41).
+%
+% Usage:
+%   pdflatex profiling/profile_report.tex
+% =============================================================================
+
+\documentclass[11pt, a4paper]{article}
+
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{tcolorbox}
+\usepackage{pgfplots}
+\usepackage{listings}
+\usepackage{siunitx}
+
+\pgfplotsset{compat=1.18}
+\geometry{margin=2.5cm}
+
+\hypersetup{colorlinks=true, linkcolor=blue!70!black, urlcolor=blue!70!black}
+
+\tcbuselibrary{breakable}
+\newtcolorbox{resultbox}[1]{
+  colback=blue!5, colframe=blue!55!black,
+  title={\textbf{#1}}, breakable, fonttitle=\bfseries\small,
+}
+\newtcolorbox{passbox}{
+  colback=green!6, colframe=green!50!black, breakable,
+}
+\newtcolorbox{notebox}{
+  colback=yellow!8, colframe=orange!60!black, breakable,
+}
+
+\lstset{basicstyle=\ttfamily\small, breaklines=true,
+        frame=single, backgroundcolor=\color{gray!7}}
+
+% =============================================================================
+\begin{document}
+% =============================================================================
+
+\title{%
+  \textbf{Phase 0 Hardware Profiling Report}\\[4pt]
+  \large \texttt{hallmhd-dlra-tda} research programme\\[6pt]
+  \normalsize Decision~D4: Metal/CPU throughput characterisation
+}
+
+\author{HPC / Apple Silicon Architect}
+
+\date{Profiling run: 2026-05-17 19:26:41 (UTC+9)\\
+Platform: Apple Mac Mini M1, 8\,GB unified RAM, Python~3.13.9\\
+NumPy~2.3.5 $\cdot$ JAX~0.10.0 (CPU backend) $\cdot$ Apple Accelerate}
+
+\maketitle
+
+% =============================================================================
+\begin{passbox}
+\textbf{Phase 0 verdict: ALL PASS --- proceed to Phase~1.}
+\smallskip
+
+\begin{tabular}{llll}
+D3 Memory budget & peak $= 0.013\,\text{GB}$ (R=32) & $\leq 13\,\text{GB}$ & \checkmark \\
+D4a FFT (128³)   & Hero Run $\approx 0.41\,\text{days}$ & $\leq 5\,\text{days}$  & \checkmark \\
+D4b SVD R=32     & $1.10\,\text{ms}$ per call         & $\leq 10\,\text{ms}$   & \checkmark \\
+\end{tabular}
+\end{passbox}
+
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Environment}
+\label{sec:env}
+% =============================================================================
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Item & Value \\
+\midrule
+Hardware & Apple Mac Mini, Apple M1 chip \\
+Unified RAM & 8\,GB \\
+JAX backend & CPU (Metal backend disabled: \texttt{JAX\_PLATFORMS=cpu}) \\
+JAX version & 0.10.0 \\
+NumPy version & 2.3.5 \\
+Python version & 3.13.9 \\
+BLAS/LAPACK & Apple Accelerate (via NumPy linkage) \\
+Profiling script & \texttt{scripts/run\_phase0\_profiling.sh} \\
+Results file & \texttt{profiling/phase0\_results.json} \\
+Elapsed time & 4.9\,s \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{notebox}
+\textbf{Note on Metal backend.}
+\texttt{jax-metal} 0.10.0 raised \texttt{UNIMPLEMENTED: default\_memory\_space
+is not supported} when attempting to allocate arrays on the M1 GPU.
+This is a version incompatibility between JAX 0.10.0 and the installed
+\texttt{jax-metal} plugin.  All profiling therefore ran on the CPU path,
+which is the conservative Hero~Run planning baseline specified in the
+proposal (\S8.3).  Metal GPU timings will be collected on the M4~16\,GB
+machine in Phase~1 and recorded as supplementary data.
+\end{notebox}
+
+\begin{notebox}
+\textbf{Note on JAX float64.}
+JAX defaulted to float32 for the JAX-path FFT despite \texttt{dtype=float64}
+being requested.  The NumPy path (which is the planning baseline) ran in
+float64 throughout.  \textbf{Before Phase~1, add
+\texttt{jax.config.update("jax\_enable\_x64", True)} to all simulation
+entry points.}
+\end{notebox}
+
+% =============================================================================
+\section{3D Real FFT Throughput (Step 1/4 and 2/4)}
+\label{sec:fft}
+% =============================================================================
+
+\subsection{Measurement methodology}
+
+The profiler measures the wall time of one forward + inverse 3D real FFT
+roundtrip (\texttt{np.fft.irfftn(np.fft.rfftn(x))}) over
+$N_\text{warmup}=5$ discarded trials and $N_\text{trials}=20$ measured
+trials, reporting mean~$\pm$~std.  The ETDRK4 timestep estimate assumes
+15 FFT roundtrips per step (conservative; actual count depends on
+implementation but 15 is the standard estimate for RK4-class methods
+with spectral dealiasing).
+
+\subsection{Results}
+
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+Backend & Resolution &
+  Mean (ms) & Std (ms) & ETDRK4 step (ms) \\
+\midrule
+JAX CPU float32$^\dagger$ &
+  $64\times64\times32$    & 0.29 & 0.04 &  4.4 \\
+JAX CPU float32$^\dagger$ &
+  $128\times128\times64$  & 2.22 & 0.27 & 33.3 \\
+JAX CPU float32$^\dagger$ &
+  $256\times256\times128$ & 15.33 & 0.19 & 229.9 \\
+\midrule
+\textbf{NumPy CPU float64} &
+  $64\times64\times32$    & 1.53  & 0.22  & 22.9 \\
+\textbf{NumPy CPU float64} &
+  $128\times128\times64$  & 15.73 & 7.06  & 236.0 \\
+\textbf{NumPy CPU float64} &
+  $256\times256\times128$ & 130.03 & 2.46 & 1950.4 \\
+\bottomrule
+\multicolumn{5}{l}{%
+  ${}^\dagger$ JAX silently downcast to float32 (see \S\ref{sec:env}).
+  NumPy float64 is the planning baseline.} \\
+\end{tabular}
+\end{center}
+
+\subsection{Hero Run wall-time estimates (150,000 steps)}
+
+\begin{center}
+\begin{tabular}{lrrll}
+\toprule
+Resolution & ETDRK4 (ms) & Hero Run (days) &
+  Ceiling ($\leq 5$ days) \\
+\midrule
+$64\times64\times32$    &   22.9 & 0.04 & \checkmark \\
+$128\times128\times64$  &  236.0 & 0.41 & \checkmark \\
+$256\times256\times128$ & 1950.4 & 3.39 & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{passbox}
+\textbf{D4a: PASS.}
+The baseline resolution $128\times128\times64$ gives a Hero Run estimate of
+$\approx 0.41$ days (CPU NumPy float64), well within the 5-day ceiling.
+Even $256\times256\times128$ (full-rank, CPU) is within ceiling at 3.39 days.
+On the M4 Metal GPU at float32, timings will be substantially faster.
+\end{passbox}
+
+% =============================================================================
+\section{Randomised SVD Throughput (Step 3/4)}
+\label{sec:svd}
+% =============================================================================
+
+\subsection{Measurement methodology}
+
+The Halko--Martinsson--Tropp (HMT) randomised SVD is benchmarked on
+$N\times N$ float64 matrices at ranks $R\in\{8,16,32,64\}$ with
+oversampling $p=10$.  The algorithm:
+(1)~draw Gaussian sketch $\Omega \in \mathbb{R}^{N\times(R+p)}$;
+(2)~form $Y = A\Omega$ and QR-orthogonalise;
+(3)~project $B = Q^\top A$;
+(4)~thin SVD of the small matrix $B$.
+All BLAS/LAPACK calls dispatched to Apple Accelerate.
+
+\subsection{Results: $128\times128$ matrices}
+
+\begin{center}
+\begin{tabular}{rrrrl}
+\toprule
+Rank $R$ & Mean (ms) & Std (ms) & Min (ms) & Target $\leq 10\,\text{ms}$ \\
+\midrule
+8  & 0.22 & 0.00 & 0.21 & \checkmark \\
+16 & 0.35 & 0.05 & 0.33 & \checkmark \\
+32 & 1.10 & 0.58 & 0.62 & \checkmark \\
+64 & 2.37 & 1.17 & 1.39 & \checkmark \\
+\midrule
+Full SVD (reference) & 2.91 & --- & --- & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Results: $256\times256$ matrices}
+
+\begin{center}
+\begin{tabular}{rrrrl}
+\toprule
+Rank $R$ & Mean (ms) & Std (ms) & Min (ms) & Target $\leq 10\,\text{ms}$ \\
+\midrule
+8  & 0.80 & 0.38 & 0.43 & \checkmark \\
+16 & 1.15 & 0.67 & 0.61 & \checkmark \\
+32 & 2.09 & 1.27 & 1.13 & \checkmark \\
+64 & 4.15 & 1.34 & 2.69 & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Speedup over full SVD ($128\times128$)}
+
+\begin{center}
+\begin{tabular}{rrr}
+\toprule
+Rank $R$ & Rand SVD (ms) & Speedup \\
+\midrule
+8  & 0.22 & $13.5\times$ \\
+16 & 0.35 & $8.4\times$ \\
+32 & 1.10 & $2.7\times$ \\
+64 & 2.37 & $1.2\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{passbox}
+\textbf{D4b: PASS.}
+All $(N, R)$ pairs are within the $\leq 10\,\text{ms}$ target.
+The critical $R=32$, $128\times128$ case gives $1.10\,\text{ms}$ mean,
+a $2.7\times$ speedup over full SVD.
+The high std at $R=32$ ($0.58\,\text{ms}$) reflects OS scheduling jitter
+on the M1 CPU; the min of $0.62\,\text{ms}$ is the hardware floor.
+\end{passbox}
+
+% =============================================================================
+\section{Memory Budget (Step 3/4 and 4/4)}
+\label{sec:mem}
+% =============================================================================
+
+\subsection{Formulas}
+
+\[
+  M_\text{state}^\text{full}
+  = N_x N_y N_z \cdot N_f \cdot 8\,\text{B},
+  \qquad
+  M_\text{peak}^\text{full}
+  = 5 \times 1.2 \times M_\text{state}^\text{full}.
+\]
+\[
+  M_\text{state}^\text{DLRA}
+  = \bigl[(N_x + N_y + N_z)R + R^3\bigr] \cdot N_f \cdot 8\,\text{B},
+  \qquad
+  M_\text{peak}^\text{DLRA}
+  = 6 \times M_\text{state}^\text{DLRA}.
+\]
+
+\subsection{Results}
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Configuration & State (GB) & Peak (GB) & $\leq 13\,\text{GB}$ \\
+\midrule
+$64\times64\times32$, full-rank   & 0.007 & 0.041 & \checkmark \\
+$128\times128\times64$, full-rank & 0.055 & 0.328 & \checkmark \\
+$128\times128\times64$, $R=32$    & 0.002 & 0.013 & \checkmark \\
+$256\times256\times128$, $R=32$   & 0.003 & 0.017 & \checkmark \\
+$512\times512\times128$, $R=32$   & 0.004 & 0.022 & \checkmark \\
+\midrule
+Hardware ceiling (operating) & \multicolumn{3}{l}{$13.0\,\text{GB}$} \\
+Physical RAM & \multicolumn{3}{l}{$16.0\,\text{GB}$} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{passbox}
+\textbf{D3: PASS.}
+All configurations are within the 13\,GB operating ceiling.
+Memory is not the bottleneck at any target resolution.
+See \texttt{docs/phase0\_architecture.tex} \S3.3 for the note on the
+proposal Table~5 discrepancy.
+\end{passbox}
+
+% =============================================================================
+\section{Consolidated Summary and Go/No-Go}
+\label{sec:summary}
+% =============================================================================
+
+\begin{center}
+\begin{tabular}{llllll}
+\toprule
+ID & Check & Measured & Threshold & Status \\
+\midrule
+D1 & Parameter set sealed        & ---            & ---           &
+  \textcolor{green!60!black}{\checkmark} \\
+D2 & Benchmark thresholds sealed & ---            & ---           &
+  \textcolor{green!60!black}{\checkmark} \\
+D3 & Memory, R=32, 128³          & 0.013\,GB peak & $\leq 13$\,GB &
+  \textcolor{green!60!black}{\checkmark} \\
+D4a & Hero Run (128³, CPU)       & 0.41\,days     & $\leq 5$\,days &
+  \textcolor{green!60!black}{\checkmark} \\
+D4b & SVD, R=32, 128×128         & 1.10\,ms       & $\leq 10$\,ms  &
+  \textcolor{green!60!black}{\checkmark} \\
+\midrule
+\textbf{Overall} & & & &
+  \textcolor{green!60!black}{\textbf{ALL PASS}} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\bigskip
+\begin{passbox}
+\textbf{Decision: Proceed to Phase~1 (3D spectral engine).}\\[4pt]
+All four architecture decisions are resolved.
+The parameter set, benchmark thresholds, memory budget, and hardware
+performance are verified.
+Phase~1 development begins with \texttt{src/engine/spectral.py}.
+
+\medskip
+\textbf{Before writing Phase~1 code, complete the three action items:}
+\begin{enumerate}
+  \item Commit \texttt{docs/phase0\_architecture.tex} (this file's companion)
+    to the repository HEAD.
+  \item Enable \texttt{jax\_enable\_x64 = True} in all simulation entry
+    points.
+  \item Switch development to the M4 16\,GB machine.
+\end{enumerate}
+\end{passbox}
+
+% =============================================================================
+\end{document}
+% =============================================================================

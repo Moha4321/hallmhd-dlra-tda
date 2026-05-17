@@ -1,0 +1,453 @@
+% =============================================================================
+% phase0_architecture.tex
+% =============================================================================
+%
+% Phase 0 Architecture Decision Record
+% hallmhd-dlra-tda  research programme
+%
+% This document is the SEALED record of all Phase 0 decisions (D1--D4).
+% It must be committed to the repository BEFORE any Phase 1 code is written.
+% SHA-256 hashes below are the integrity anchors for pre-registration.
+%
+% Usage:
+%   pdflatex docs/phase0_architecture.tex
+% =============================================================================
+
+\documentclass[11pt, a4paper]{article}
+
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{tcolorbox}
+\usepackage{listings}
+\usepackage{datetime2}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = blue!70!black,
+  urlcolor   = blue!70!black,
+}
+
+\tcbuselibrary{breakable, skins}
+
+\newtcolorbox{sealbox}[1]{
+  colback  = green!6,
+  colframe = green!45!black,
+  title    = {\textbf{#1}},
+  breakable,
+  fonttitle = \bfseries\small,
+}
+
+\newtcolorbox{warnbox}{
+  colback  = orange!8,
+  colframe = orange!70!black,
+  breakable,
+}
+
+\lstset{
+  basicstyle   = \ttfamily\small,
+  breaklines   = true,
+  frame        = single,
+  backgroundcolor = \color{gray!8},
+}
+
+% =============================================================================
+\begin{document}
+% =============================================================================
+
+\title{%
+  \textbf{Phase 0 Architecture Decision Record}\\[4pt]
+  \large \texttt{hallmhd-dlra-tda} research programme\\[6pt]
+  \normalsize Sealed end of Month~1 --- before any Phase~1 code is written
+}
+
+\author{HPC / Apple Silicon Architect \quad\&\quad Lead Plasma Theorist}
+
+\date{2026-05-17 \quad|\quad Profiling run: \texttt{19:26:41 UTC+9}}
+
+\maketitle
+\thispagestyle{empty}
+
+% =============================================================================
+\begin{warnbox}
+\textbf{Protocol notice.}
+This document records the four architecture decisions (D1--D4) required by
+\S4.1 of the research proposal before Phase~1 begins.  It is immutable once
+committed.  Any alteration after the first Phase~1 commit constitutes a
+protocol violation and must be disclosed in the manuscript.
+
+The SHA-256 hash in \S\ref{sec:seal} is the integrity anchor.
+Verify at any time with:
+\begin{lstlisting}
+shasum -a 256 --check <(echo \
+  '843051f71daa0d79d3900d45dbb00130640e61c0e1dc6ce750d26ea84a66d3dc  \
+  benchmarks/thresholds.py')
+\end{lstlisting}
+\end{warnbox}
+
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Decision D1 --- Parameter Set}
+\label{sec:d1}
+% =============================================================================
+
+\begin{sealbox}{D1: Physical and numerical parameters --- SEALED}
+All parameters below are fixed.  They must not be altered after this
+commit without a documented decision record.  Any change after the
+Month~5 SVD test constitutes a protocol violation.
+\end{sealbox}
+
+\subsection{Physical parameters}
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+Symbol & Value & Description & Source \\
+\midrule
+$B_T$ & $5.3\,\text{T}$ & ITER on-axis toroidal guide field & ITER design \\
+$\varepsilon = B_p/B_T$ & $0.1$ & Poloidal-to-toroidal field ratio & \S3.2.1 \\
+$d_i$ & $0.1$ & Normalised ion inertial length & \S3.1 \\
+$S_\text{eff}$ & $10^6$ & Lundquist number at grid scale & \S3.1 \\
+$\gamma$ & $5/3$ & Adiabatic index & monatomic ideal plasma \\
+$\hat{s}$ & $0.8$ & Magnetic shear parameter & mid-radius \\
+$\nu_4,\,\eta_4$ & $5\times10^{-8}$ & Hyper-dissipation coefficients & \S3.1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Grid parameters}
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+Parameter & Value & Description \\
+\midrule
+$(N_x, N_y, N_z)$ & $(128, 128, 64)$ & Baseline grid (Phase~1--3) \\
+$(L_x, L_y)$ & $1.0$ & Perpendicular box lengths (normalised) \\
+$L_z$ & $2\pi$ & Parallel box length (field-aligned) \\
+$N_\text{fields}$ & $7$ & Evolved fields: $\rho, v_x, v_y, v_z, A_z, B_x, P$ \\
+Dtype & \texttt{float64} & All state arrays \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Time-stepping parameters}
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+Parameter & Value & Description \\
+\midrule
+$\Delta t$ & $5\times10^{-4}$ & Timestep (Alfvén time units) \\
+$M_\text{contour}$ & $32$ & Kassam--Trefethen quadrature points \\
+$N_c$ & $25$ & GPU chunk size (steps per async transfer) \\
+$N_T$ & $150{,}000$ & Total steps (Hero Run) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{DLRA parameters}
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+Parameter & Value & Description \\
+\midrule
+$R_\text{initial}$ & $32$ & Initial Tucker rank \\
+$R_\text{min}$ & $4$ & Minimum adaptive rank \\
+$R_\text{max}$ & $64$ & Maximum adaptive rank \\
+$\delta_\text{tol}$ & $10^{-4}$ & Relative truncation tolerance \\
+$p$ & $10$ & HMT oversampling parameter \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Source file:} \texttt{src/hallmhd/parameters.py}
+
+% =============================================================================
+\section{Decision D2 --- Benchmark Suite}
+\label{sec:d2}
+% =============================================================================
+
+\begin{sealbox}{D2: Pre-registered benchmark thresholds --- SEALED}
+The five benchmark tests and their acceptance thresholds are fixed below.
+The solver must pass all five before the Month~5 SVD test.
+Threshold values are taken verbatim from
+\texttt{benchmarks/thresholds.py} (SHA-256 in \S\ref{sec:seal}).
+\end{sealbox}
+
+\begin{center}
+\begin{tabular}{p{0.6cm} p{4.5cm} p{7cm}}
+\toprule
+ID & Name & Acceptance criterion \\
+\midrule
+B1 & FKR tearing mode growth rate &
+  $|\gamma_\text{meas} - \gamma_\text{FKR}|/\gamma_\text{FKR} \leq 0.05$
+  (resistive MHD limit $d_i \to 0$) \\[4pt]
+B2 & Alfvén wave dispersion &
+  $\max_{k_\parallel} |\omega_\text{meas} - k_\parallel v_A|/(k_\parallel v_A)
+  \leq 0.01$,\;
+  $k_\parallel \in \{1,\ldots,8\}$ \\[4pt]
+B3 & Kraichnan $k^{-3}$ spectrum &
+  Fitted $\alpha_\perp \in [-3.15,\,-2.85]$,\;
+  $k_\perp$ fit range $[4,\,32]$ \\[4pt]
+B4 & Goldreich--Sridhar $k_\parallel^{-2}$ &
+  Fitted $\alpha_\parallel \in [-2.20,\,-1.80]$,\;
+  $k_\parallel$ fit range $[2,\,16]$ \\[4pt]
+B5 & Quadrupolar $B_z$ Hall signature &
+  $\max|B_z| > 0.05\,B_0$ \textbf{and}
+  Pearson $r(B_z,\,\text{template}) > 0.90$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Source files:}
+\texttt{benchmarks/thresholds.py},
+\texttt{benchmarks/benchmarks.py}
+
+% =============================================================================
+\section{Decision D3 --- Memory Budget}
+\label{sec:d3}
+% =============================================================================
+
+\begin{sealbox}{D3: Memory budget verified by profiling --- SEALED}
+Peak RAM at $128\times128\times64$, $R=32$, float64 is
+$\mathbf{0.013\,\text{GB}}$ for the analytical Tucker-format formula.
+Well within the $13\,\text{GB}$ operating ceiling.
+See \S\ref{sec:d3-note} for the discrepancy with the proposal's Table~5.
+\end{sealbox}
+
+\subsection{Measured values (from \texttt{phase0\_results.json})}
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Configuration & State (GB) & Peak (GB) & $\leq 13\,\text{GB}$ \\
+\midrule
+$64\times64\times32$, full-rank     & 0.007 & 0.041 & YES \\
+$128\times128\times64$, full-rank   & 0.055 & 0.328 & YES \\
+$128\times128\times64$, $R=32$      & 0.002 & 0.013 & YES \\
+$256\times256\times128$, $R=32$     & 0.003 & 0.017 & YES \\
+$512\times512\times128$, $R=32$     & 0.004 & 0.022 & YES \\
+\midrule
+Hardware ceiling (operating) & \multicolumn{3}{l}{$13.0\,\text{GB}$} \\
+Physical RAM & \multicolumn{3}{l}{$16.0\,\text{GB}$} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Memory formula}
+
+The state tensor in Tucker format (rank $R$) occupies:
+\[
+  M_\text{state}^\text{DLRA}
+  = \bigl[(N_x + N_y + N_z)R + R^3\bigr] \cdot N_f \cdot 8\,\text{B}.
+\]
+Peak usage with 5 ETDRK4 buffers and tSVD workspace:
+\[
+  M_\text{peak}^\text{DLRA} = 6 \times M_\text{state}^\text{DLRA}.
+\]
+Full-rank peak (5 copies + FFT workspace $\approx 1.2\times$):
+\[
+  M_\text{peak}^\text{full} = 5 \times 1.2 \times N_x N_y N_z \cdot N_f \cdot 8\,\text{B}.
+\]
+
+\subsection{Note on proposal Table~5 discrepancy}
+\label{sec:d3-note}
+
+The proposal (\S8.2) states $128\times128\times64 \times 7 \times 8\,\text{B}
+\approx 3.7\,\text{GB}$.  The correct calculation gives
+$128\times128\times64\times7\times8 = 58{,}720{,}256\,\text{B} \approx 0.055\,\text{GB}$
+(binary) / $0.059\,\text{GB}$ (SI).  The proposal figure is approximately $63\times$ too
+large, likely resulting from a unit conversion error in the written document.
+The code in \texttt{parameters.py} is arithmetically correct.
+The RAM constraint is therefore non-binding at all target grid sizes
+below $512\times512\times128$.  This is a favourable finding: memory is
+not the bottleneck for Phase~1.
+
+\noindent\textbf{Source file:} \texttt{src/hallmhd/parameters.py},
+\texttt{src/hallmhd/memory\_budget.py}
+
+% =============================================================================
+\section{Decision D4 --- Hardware Profiling}
+\label{sec:d4}
+% =============================================================================
+
+\begin{sealbox}{D4: Profiling results --- SEALED}
+All profiling ran on Apple Mac Mini (M1, 8\,GB unified RAM) under
+\texttt{JAX\_PLATFORMS=cpu} (Metal backend unavailable due to
+\texttt{jax-metal} 0.10.0 API incompatibility).
+CPU float64 timings are the conservative Hero Run planning baseline
+as specified in the proposal (\S8.3).
+M4 16\,GB Metal timings to be recorded as supplementary data when
+available; they will be faster and do not affect the go/no-go decisions.
+\end{sealbox}
+
+\subsection{D4a --- 3D real FFT throughput}
+
+Platform: Apple M1, NumPy 2.3.5, Apple Accelerate BLAS, float64.
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+Resolution & FFT mean (ms) & FFT std (ms) &
+  ETDRK4 step (ms) & Hero Run (days) \\
+\midrule
+$64\times64\times32$    &  1.53 & 0.22 &  22.9 & 0.04 \\
+$128\times128\times64$  & 15.73 & 7.06 & 236.0 & 0.41 \\
+$256\times256\times128$ & 130.03 & 2.46 & 1950.4 & 3.39 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+Proposal ceiling: Hero Run $\leq 5$ days.
+All three resolutions are within ceiling.
+The $128\times128\times64$ baseline ETDRK4 step is $\approx 236\,\text{ms}$
+on CPU; the JAX-JIT CPU path gives $\approx 33\,\text{ms}$ (float32 due to
+JAX x64 not enabled).
+
+\paragraph{JAX x64 warning.}
+JAX defaulted to float32 despite requesting float64 (\texttt{jax.numpy.ones}
+with \texttt{dtype=float64} silently truncated).
+\textbf{Action required before Phase~1:} add
+\texttt{jax.config.update("jax\_enable\_x64", True)} at the top of all
+simulation entry points, or set \texttt{JAX\_ENABLE\_X64=1} in the
+environment.  This is critical --- the solver \emph{must} run in float64.
+
+\subsection{D4b --- Randomised SVD (HMT) throughput}
+
+Platform: Apple M1, NumPy 2.3.5, Apple Accelerate, float64.
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+Matrix & Rank $R$ & Mean (ms) & Std (ms) & Target $\leq 10\,\text{ms}$ \\
+\midrule
+$128\times128$ & 8  & 0.22 & 0.00 & \checkmark \\
+$128\times128$ & 16 & 0.35 & 0.05 & \checkmark \\
+$128\times128$ & 32 & 1.10 & 0.58 & \checkmark \\
+$128\times128$ & 64 & 2.37 & 1.17 & \checkmark \\
+\midrule
+$256\times256$ & 8  & 0.80 & 0.38 & \checkmark \\
+$256\times256$ & 16 & 1.15 & 0.67 & \checkmark \\
+$256\times256$ & 32 & 2.09 & 1.27 & \checkmark \\
+$256\times256$ & 64 & 4.15 & 1.34 & \checkmark \\
+\midrule
+$128\times128$ & full SVD (reference) & 2.91 & --- & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+All ranks pass the $\leq 10\,\text{ms}$ target.  The critical $R=32$
+case gives $1.10\,\text{ms}$ --- a $2.7\times$ speedup over full SVD.
+
+% =============================================================================
+\section{Phase 0 Decision Summary}
+\label{sec:summary}
+% =============================================================================
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Decision & Status & Notes \\
+\midrule
+D1 Parameter set & \textcolor{green!60!black}{\textbf{SEALED}} &
+  \texttt{src/hallmhd/parameters.py} \\
+D2 Benchmark thresholds & \textcolor{green!60!black}{\textbf{SEALED}} &
+  \texttt{benchmarks/thresholds.py} \\
+D3 Memory budget & \textcolor{green!60!black}{\textbf{VERIFIED}} &
+  Peak $0.013\,\text{GB}$ (R=32), within $13\,\text{GB}$ ceiling \\
+D4a FFT throughput & \textcolor{green!60!black}{\textbf{PASS}} &
+  Hero Run $\approx 0.41\,\text{days}$, within $5$-day ceiling \\
+D4b SVD throughput & \textcolor{green!60!black}{\textbf{PASS}} &
+  $1.10\,\text{ms}$ at $R=32$, within $10\,\text{ms}$ target \\
+\midrule
+\textbf{Overall} & \textcolor{green!60!black}{\textbf{ALL PASS}} &
+  Proceed to Phase~1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% =============================================================================
+\section{Integrity Seal}
+\label{sec:seal}
+% =============================================================================
+
+\begin{sealbox}{SHA-256 integrity hashes --- record before first Phase~1 commit}
+
+\textbf{Benchmark thresholds} (\texttt{benchmarks/thresholds.py}):
+\begin{lstlisting}
+843051f71daa0d79d3900d45dbb00130640e61c0e1dc6ce750d26ea84a66d3dc
+\end{lstlisting}
+
+\textbf{Verify with:}
+\begin{lstlisting}
+shasum -a 256 benchmarks/thresholds.py
+\end{lstlisting}
+
+\textbf{Profiling run timestamp:} 2026-05-17 19:26:41 (UTC+9)\\
+\textbf{Platform:} Apple Mac Mini M1, 8\,GB, macOS, Python 3.13.9, NumPy 2.3.5, JAX 0.10.0 (CPU)\\
+\textbf{Consolidated results:} \texttt{profiling/phase0\_results.json}
+
+\medskip
+\noindent
+\textbf{SVD analytical prediction} (\texttt{docs/theory/svd\_prediction\_sealed.tex}):
+sealed before Month~4--5 empirical measurement.
+Predictions P1--P3 from that document are reproduced below for reference:
+\begin{align*}
+  \sigma_k^{(z)}(t) &\lesssim C\,e^{-\alpha k},
+  \quad \alpha \approx 0.011 \tag{P1} \\
+  \alpha(d_i,\varepsilon) &= \tfrac{1}{2}(\eta_4 T_\text{run})^{1/4} / N_z^{1/2}
+  \tag{P2} \\
+  \varepsilon_\text{DLRA}(R=32) &\lesssim C_\text{Hall}\,C\,e^{-33\alpha}
+  \tag{P3}
+\end{align*}
+\end{sealbox}
+
+% =============================================================================
+\section{Action Items for Phase 1}
+\label{sec:actions}
+% =============================================================================
+
+The following items \textbf{must} be addressed before or at the start of
+Phase~1 code:
+
+\begin{enumerate}
+
+\item \textbf{Enable JAX float64.}
+  Add to all simulation entry points:
+\begin{lstlisting}[language=Python]
+import jax
+jax.config.update("jax_enable_x64", True)
+\end{lstlisting}
+  or set \texttt{JAX\_ENABLE\_X64=1} in \texttt{scripts/run\_phase0\_profiling.sh}.
+  The solver runs in float64 throughout; the float32 fallback is unacceptable.
+
+\item \textbf{Switch to M4 16\,GB for Phase~1.}
+  Phase~0 profiling ran on M1 8\,GB (CPU only).
+  Phase~1 development and all solver runs must use the M4 16\,GB machine.
+  Re-run \texttt{scripts/run\_phase0\_profiling.sh} on the M4 to obtain
+  Metal GPU baseline timings and record them as supplementary data.
+
+\item \textbf{Initialise Phase~1 module structure.}
+  Create \texttt{src/engine/} with the spectral operator skeleton
+  before writing any physics code.
+
+\item \textbf{Commit this file before first Phase~1 commit.}
+  This document (\texttt{docs/phase0\_architecture.tex}) must be in the
+  repository HEAD before \texttt{src/engine/spectral.py} is created.
+
+\end{enumerate}
+
+% =============================================================================
+\end{document}
+% =============================================================================

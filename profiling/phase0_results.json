@@ -1,0 +1,141 @@
+{
+  "fft_3d": {
+    "jax": {
+      "64x64x32": {
+        "mean_ms": 0.4017396000563167,
+        "std_ms": 0.032987292675790154,
+        "min_ms": 0.36050000016984995,
+        "backend": "cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 6.0260940008447506
+      },
+      "128x128x64": {
+        "mean_ms": 2.2144603999549872,
+        "std_ms": 0.269149631514555,
+        "min_ms": 1.9892909986083396,
+        "backend": "cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 33.21690599932481
+      },
+      "256x256x128": {
+        "mean_ms": 16.301533349633246,
+        "std_ms": 0.7457678696803466,
+        "min_ms": 15.541208000286133,
+        "backend": "cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 244.5230002444987
+      }
+    },
+    "numpy_cpu": {
+      "64x64x32": {
+        "mean_ms": 1.4546207500643504,
+        "std_ms": 0.033180172500954605,
+        "min_ms": 1.4140410003165016,
+        "backend": "numpy_cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 21.819311250965256
+      },
+      "128x128x64": {
+        "mean_ms": 13.988920849806163,
+        "std_ms": 0.4466696928315867,
+        "min_ms": 13.588292000349611,
+        "backend": "numpy_cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 209.83381274709245
+      },
+      "256x256x128": {
+        "mean_ms": 128.10886669994943,
+        "std_ms": 1.052191388554766,
+        "min_ms": 127.09108299895888,
+        "backend": "numpy_cpu",
+        "dtype": "float64",
+        "etdrk4_step_estimate_ms": 1921.6330004992415
+      }
+    }
+  },
+  "hero_run_estimates": {
+    "64x64x32": {
+      "etdrk4_ms": 21.82,
+      "total_days": 0.038,
+      "within_ceiling": true,
+      "source": "numpy_cpu float64"
+    },
+    "128x128x64": {
+      "etdrk4_ms": 209.83,
+      "total_days": 0.364,
+      "within_ceiling": true,
+      "source": "numpy_cpu float64"
+    },
+    "256x256x128": {
+      "etdrk4_ms": 1921.63,
+      "total_days": 3.336,
+      "within_ceiling": true,
+      "source": "numpy_cpu float64"
+    }
+  },
+  "randomised_svd": {
+    "128x128": {
+      "R8": {
+        "mean_ms": 0.20678344990301412,
+        "std_ms": 0.009408361676178433,
+        "min_ms": 0.19983399943157565
+      },
+      "R16": {
+        "mean_ms": 0.3110979499069799,
+        "std_ms": 0.003619029778628302,
+        "min_ms": 0.30824999885226134
+      },
+      "R32": {
+        "mean_ms": 1.3239375500234019,
+        "std_ms": 0.9628047326078687,
+        "min_ms": 0.7676250006625196
+      },
+      "R64": {
+        "mean_ms": 1.9866020499648585,
+        "std_ms": 0.62980998226602,
+        "min_ms": 1.4264999990700744
+      }
+    },
+    "256x256": {
+      "R8": {
+        "mean_ms": 0.7700270502027706,
+        "std_ms": 0.20905153277896463,
+        "min_ms": 0.47737500062794425
+      },
+      "R16": {
+        "mean_ms": 0.8239958500780631,
+        "std_ms": 0.4067195878827553,
+        "min_ms": 0.6540000013046665
+      },
+      "R32": {
+        "mean_ms": 1.7604770002435544,
+        "std_ms": 0.8287010663657226,
+        "min_ms": 1.1702909996529343
+      },
+      "R64": {
+        "mean_ms": 3.5030375001042557,
+        "std_ms": 1.0558787036479556,
+        "min_ms": 2.715082999202423
+      }
+    }
+  },
+  "full_svd_reference_128x128": {
+    "full_svd": {
+      "mean_ms": 2.900672899795609,
+      "std_ms": 1.1547512377430573,
+      "min_ms": 2.0773329997609835
+    }
+  },
+  "memory_budget": {
+    "canonical_state_gb": 0.0022,
+    "canonical_peak_gb": 0.0135,
+    "within_13gb_ceiling": true
+  },
+  "phase0_summary": {
+    "fft_ceiling_ok": true,
+    "svd_ceiling_ok": true,
+    "memory_ok": true,
+    "all_ok": true,
+    "elapsed_s": 4.7
+  }
+}

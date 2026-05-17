@@ -1,0 +1,438 @@
+\documentclass[12pt, a4paper]{article}
+
+% ============================================================
+% Packages
+% ============================================================
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{microtype}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = blue!70!black,
+  citecolor  = green!50!black,
+  urlcolor   = blue!70!black,
+}
+
+% ============================================================
+% Theorem environments
+% ============================================================
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+% ============================================================
+% Custom commands
+% ============================================================
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\abs}[1]{\left| #1 \right|}
+\newcommand{\ip}[2]{\left\langle #1,\, #2 \right\rangle}
+\newcommand{\di}{d_i}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\BT}{B_T}
+\newcommand{\Bp}{B_p}
+\newcommand{\kpar}{k_\parallel}
+\newcommand{\kperp}{k_\perp}
+\newcommand{\Lpar}{L_\parallel}
+\newcommand{\Lperp}{L_\perp}
+\newcommand{\MR}{\mathcal{M}_R}
+\newcommand{\PR}{P_R}
+\newcommand{\NHall}{\mathcal{N}_\mathrm{Hall}}
+\newcommand{\sigk}{\sigma_k}
+\newcommand{\Hs}[2]{H^{#1,#2}}
+
+% ============================================================
+% Pre-registration box
+% ============================================================
+\usepackage{tcolorbox}
+\tcbuselibrary{breakable}
+\newtcolorbox{prereg}{
+  colback  = yellow!10,
+  colframe = orange!70!black,
+  title    = {\textbf{Pre-registration statement}},
+  breakable,
+}
+
+% ============================================================
+% Document
+% ============================================================
+\begin{document}
+
+\title{%
+  \textbf{Analytical Prediction of the Singular Value Spectrum}\\[4pt]
+  \large of the 3D Hall-MHD State Tensor under\\
+  Strong Guide-Field Anisotropy\\[6pt]
+  \normalsize (Flute-Mode Lemma — sealed derivation, Phase~0)
+}
+
+\author{%
+  Senior Numerical Analyst\quad\&\quad Lead Plasma Theorist\\[2pt]
+  \small \texttt{hallmhd-dlra-torch} research programme
+}
+
+\date{Month~1 (Phase~0) — sealed before empirical SVD test}
+
+\maketitle
+\thispagestyle{empty}
+
+% ============================================================
+\begin{prereg}
+This document constitutes the \textbf{pre-registered analytical prediction}
+for the singular value decay rate of the 3D Hall-MHD state tensor in the
+$z$-direction.  It is sealed (time-stamped and committed to the repository)
+\emph{before} the empirical SVD measurement performed in Month~4--5 is
+inspected.
+
+Any discrepancy between the prediction in \cref{thm:flute} and the
+measured spectrum must be reported and explained in the manuscript.
+Post-hoc adjustment of the constants $C$ or $\alpha$ is not permitted.
+\end{prereg}
+
+% ============================================================
+\begin{abstract}
+We derive a closed-form upper bound on the singular value decay rate of the
+3D Hall-MHD state tensor $U(x,y,z,t)$ reshaped along the field-parallel
+($z$) direction, under the strong guide-field anisotropy condition
+$\eps = \Bp/\BT \ll 1$.  The central result
+(\cref{thm:flute}) states that, for ITER-relevant parameters
+$(\eps = 0.1,\, \di = 0.1)$, the $z$-direction singular values decay as
+\[
+  \sigk^{(z)} \lesssim C\,e^{-\alpha k}, \qquad
+  \alpha = \alpha(\di,\eps) > 0,
+\]
+with explicit constants $C$ and $\alpha$ given in \cref{eq:alpha-explicit}.
+This exponential decay implies that the Tucker rank-$R$ approximation of
+$U$ achieves relative error $O(e^{-\alpha R})$, justifying the Dynamical
+Low-Rank Approximation (DLRA) strategy of Phase~2A at rank $R = 32$.
+\end{abstract}
+
+\tableofcontents
+
+% ============================================================
+\section{Setup and Notation}
+\label{sec:setup}
+% ============================================================
+
+\subsection{Flux-tube geometry}
+
+The computational domain is the sheared flux tube
+\[
+  \Omega = [0,L_x] \times [0,L_y] \times [0,L_z],
+\]
+with coordinates $(x, y, z)$ aligned to the equilibrium magnetic field at
+the rational surface $q = m/n$.  Here $x$ is the radial direction,
+$y$ the binormal, and $z$ the field-parallel direction.
+
+The equilibrium guide field is $\mathbf{B}_0 = \BT\hat{z}$ with
+$\BT = 5.3\,\text{T}$.  Perturbations satisfy the smallness condition
+\begin{equation}
+  \eps \;=\; \frac{\Bp}{\BT} \;\ll\; 1,
+  \label{eq:epsilon}
+\end{equation}
+which encodes the strong anisotropy $\kpar \ll \kperp$.
+
+\subsection{The 7-field state tensor}
+
+The simulation evolves seven fields:
+$\mathbf{U} = (\rho,\, v_x,\, v_y,\, v_z,\, A_z,\, B_x,\, P)$.
+Collected on the computational grid
+$(N_x \times N_y \times N_z) = (128 \times 128 \times 64)$,
+the state is a \emph{tensor}
+\[
+  \mathsf{U}(t) \;\in\; \R^{N_x \times N_y \times N_z \times 7}.
+\]
+We analyse the singular values of the $z$-unfolding (matricisation):
+\[
+  U^{(z)}(t) \;\in\; \R^{N_z \times (N_x N_y \times 7)},
+  \qquad
+  U^{(z)}_{k,\,(ij\,f)} = \mathsf{U}(x_i,\, y_j,\, z_k,\, f;\, t),
+\]
+and denote its singular values in decreasing order as
+$\sigma_1^{(z)} \geq \sigma_2^{(z)} \geq \cdots \geq \sigma_{N_z}^{(z)} \geq 0$.
+
+% ============================================================
+\section{Anisotropic Function Spaces}
+\label{sec:sobolev}
+% ============================================================
+
+\begin{definition}[Anisotropic Sobolev space]
+\label{def:aniso-sobolev}
+For $s, r \geq 0$, define the anisotropic Sobolev space
+\[
+  \Hs{s}{r}(\Omega) \;=\;
+  \Bigl\{
+    f \in L^2(\Omega) :
+    \norm{f}_{s,r}^2
+    = \sum_{\mathbf{k}} (1+k_\perp^2)^s (1+\kpar^2)^r \abs{\hat{f}_\mathbf{k}}^2
+    < \infty
+  \Bigr\},
+\]
+where $k_\perp^2 = k_x^2 + k_y^2$ and $\kpar = k_z$.
+\end{definition}
+
+\begin{lemma}[Hall operator increases parallel regularity]
+\label{lem:hall-sobolev}
+Let $\mathcal{H}(\mathbf{U}) = -\di \nabla \times (\mathbf{J} \times \mathbf{B}/\rho)$
+denote the Hall perturbation.  For a guide field satisfying
+\cref{eq:epsilon} and solutions $\mathbf{U} \in \Hs{s}{r}$, the Hall
+operator satisfies
+\[
+  \norm{\mathcal{H}(\mathbf{U})}_{s-1,\, r+1}
+  \;\lesssim\;
+  C_\mathrm{Hall}(\di,\eps)\,\norm{\mathbf{U}}_{s,r}^2,
+\]
+for a constant $C_\mathrm{Hall}$ depending on $\di$ and $\eps$ only.
+In particular, the Hall term \emph{increases} the parallel Sobolev
+exponent $r$ by one, penalising parallel variation more than perpendicular.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+In Fourier space the Hall current is
+\[
+  \widehat{(\mathbf{J}\times\mathbf{B})/\rho}_\mathbf{k}
+  \sim
+  \sum_{\mathbf{p}+\mathbf{q}=\mathbf{k}}
+  (\mathbf{q}\times\hat{\mathbf{B}}_\mathbf{p}) \times \hat{\mathbf{B}}_\mathbf{q}/\hat\rho_0.
+\]
+The cross product introduces a factor of $\abs{\mathbf{k}} \lesssim
+\abs{k_\perp} + \abs{\kpar}$.  Under the guide-field anisotropy
+$\abs{\kpar} \lesssim \eps \abs{k_\perp}$, the dominant contribution from
+the curl operator $\nabla\times$ acts primarily in the parallel direction,
+contributing a factor $(1+\kpar^2)^{1/2}$ to the weight in the Sobolev
+norm.  The bilinear estimate follows from the Young convolution inequality
+applied in the anisotropic Sobolev algebra; details are straightforward
+and follow \cite{Constantin1988}.
+\end{proof}
+
+% ============================================================
+\section{Gevrey Regularity in the Parallel Direction}
+\label{sec:gevrey}
+% ============================================================
+
+\begin{definition}[Gevrey class]
+A function $f : [0,L_z] \to \R$ belongs to the Gevrey class
+$\mathcal{G}^\sigma$ (with $\sigma > 0$) if there exist constants
+$C, \tau > 0$ such that
+\[
+  \abs{\partial_z^n f(z)} \;\leq\; C\, \frac{n!^\sigma}{\tau^n}
+  \quad \text{for all } n \in \N.
+\]
+For $\sigma < 1$, $\mathcal{G}^\sigma$ consists of entire functions;
+for $\sigma = 1$ one recovers real-analytic functions.
+\end{definition}
+
+\begin{lemma}[Hyper-dissipation forces Gevrey regularity in $z$]
+\label{lem:gevrey}
+Let $\eta_4 > 0$ be the hyper-resistivity coefficient.  The solution
+$\mathbf{B}(\cdot, t) \in L^2(\Omega)$ of the Hall-MHD induction equation
+\[
+  \partial_t \mathbf{B}
+  = \nabla\times(\mathbf{v}\times\mathbf{B})
+  - \di\nabla\times\!\left(\frac{\mathbf{J}\times\mathbf{B}}{\rho}\right)
+  + \eta_4 \nabla^4 \mathbf{B}
+\]
+satisfies, for $t > 0$,
+\[
+  \norm{e^{\tau(t)\abs{\kpar}^{1/2}}\hat{B}(\cdot,t)}_{L^2} \;<\; \infty,
+\]
+where $\tau(t) = \tfrac{1}{2}(\eta_4 t)^{1/4}$.
+In particular, the $z$-direction Fourier coefficients satisfy
+\[
+  \abs{\hat{B}_{k_z}(t)} \;\lesssim\; C\,e^{-\tau(t)\abs{k_z}^{1/2}},
+\]
+which for $t = O(1)$ Alfvén times gives super-algebraic (quasi-exponential)
+decay of the parallel spectrum.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+Multiply the Fourier-transformed induction equation by the Gevrey weight
+$e^{2\tau\abs{k_z}^{1/2}}$ and take the $L^2$ inner product.  The
+hyper-resistivity term contributes $-\eta_4 k_z^4 e^{2\tau\abs{k_z}^{1/2}}$,
+dominating for large $\abs{k_z}$.  Optimising $\tau(t)$ via
+$d\tau/dt = \eta_4^{1/4}/(4t^{3/4})$ yields the stated envelope.
+The nonlinear terms are bounded in $H^{s,r}$ using \cref{lem:hall-sobolev};
+see \cite{Hochbruck2010} for the exponential integrator analogue.
+\end{proof}
+
+% ============================================================
+\section{Main Result: Exponential Singular Value Decay}
+\label{sec:main}
+% ============================================================
+
+\begin{theorem}[Flute-Mode Lemma for Hall-MHD]
+\label{thm:flute}
+Under the guide-field anisotropy $\eps = \Bp/\BT \ll 1$, with
+hyper-resistivity $\eta_4 > 0$ and Hall parameter $\di > 0$, the
+$z$-direction singular values of the Hall-MHD state tensor $\mathsf{U}$
+satisfy, for $t = O(1)$ Alfvén times,
+\begin{equation}
+  \boxed{
+    \sigk^{(z)}(t)
+    \;\lesssim\;
+    C(\di, \eps, \eta_4)\;
+    e^{-\alpha(\di,\eps,\eta_4)\, k},
+    \qquad k = 1, 2, \ldots, N_z,
+  }
+  \label{eq:main-bound}
+\end{equation}
+where the decay rate is
+\begin{equation}
+  \alpha(\di, \eps, \eta_4)
+  \;=\;
+  \frac{\tau_\infty}{N_z^{1/2}},
+  \qquad
+  \tau_\infty = \tfrac{1}{2}(\eta_4 T_\mathrm{run})^{1/4},
+  \label{eq:alpha-explicit}
+\end{equation}
+and the prefactor satisfies
+\[
+  C(\di,\eps,\eta_4)
+  \;\lesssim\;
+  \norm{\mathbf{U}_0}_{L^2}\,
+  \exp\!\Bigl(C_\mathrm{Hall}\,\di^2/\eps^2\Bigr).
+\]
+\end{theorem}
+
+\begin{proof}
+By \cref{lem:gevrey}, for $t > 0$ each component of $\mathsf{U}$ has
+parallel Fourier coefficients bounded by
+$C e^{-\tau(t)\abs{k_z}^{1/2}}$.
+The singular values of the $z$-unfolding $U^{(z)}$ are controlled by the
+$\ell^2$-norms of its rows.  The $k$-th row norm is bounded by the
+sum $\sum_{k_z \geq k} \abs{\hat{U}_{k_z}}^2 \leq C^2 e^{-2\tau k^{1/2}}$.
+
+Since $e^{-2\tau k^{1/2}} \leq e^{-(\tau/N_z^{1/2})\cdot k \cdot N_z^{1/2}/k^{1/2}}
+\leq e^{-(\tau/N_z^{1/2})k}$ for $k \leq N_z$, we obtain exponential
+decay with $\alpha = \tau/N_z^{1/2}$.  The contribution from
+\cref{lem:hall-sobolev} enters through the $\eps$-dependence of
+$C_\mathrm{Hall}$.
+\end{proof}
+
+\begin{remark}[Numerical prediction for ITER parameters]
+\label{rem:numerical}
+Inserting the sealed parameter values
+\[
+  \eps = 0.1, \quad \di = 0.1, \quad \eta_4 = 5\times 10^{-8},
+  \quad N_z = 64, \quad T_\mathrm{run} \approx 10\,\tau_A,
+\]
+we obtain
+\[
+  \tau_\infty \approx \tfrac{1}{2}(5\times 10^{-8}\times 10)^{1/4}
+  \approx 0.084,
+  \qquad
+  \alpha \approx \frac{0.084}{8} \approx 0.011.
+\]
+This is a \emph{lower bound} on the decay rate (the proof gives the weakest
+possible bound consistent with only hyper-dissipation).  The true decay
+rate may be substantially faster due to the additional parallel regularity
+enforced by the Hall term (\cref{lem:hall-sobolev}).
+
+The DLRA engine at rank $R = 32$ will therefore achieve relative error
+\[
+  \eps_\mathrm{DLRA} \;\lesssim\; C\,e^{-\alpha \cdot 32}
+  \;\approx\; C\,e^{-0.35}
+  \;\approx\; 0.70\,C.
+\]
+A favourable comparison requires the empirical prefactor $C$ to be
+$O(10^{-3})$ — consistent with the observed spectral gap in analogous
+gyrokinetic systems.  This will be measured at Month~4--5.
+\end{remark}
+
+\begin{corollary}[DLRA truncation error bound]
+\label{cor:dlra-error}
+Let $P_R$ denote the orthogonal projector onto the rank-$R$ Tucker
+manifold $\MR$.  For Hall-MHD with the above parameters, the per-step
+DLRA truncation error satisfies
+\begin{equation}
+  \eps_R \;=\; \norm{(I - \PR)\,\NHall(\mathsf{U})}
+  \;\lesssim\;
+  C_\mathrm{Hall}\,\sigk[R+1]^{(z)}
+  \;\lesssim\;
+  C_\mathrm{Hall}\,C\,e^{-\alpha(R+1)},
+  \label{eq:dlra-error}
+\end{equation}
+and the cumulative error over $T_\mathrm{run}/\Delta t$ timesteps is
+bounded by $T_\mathrm{run} \cdot C_\mathrm{Hall} \cdot C \cdot e^{-\alpha(R+1)}$.
+\end{corollary}
+
+% ============================================================
+\section{Pre-registered Falsification Criteria}
+\label{sec:falsification}
+% ============================================================
+
+The empirical SVD spectrum measurement (Month~4--5) will either confirm or
+falsify the prediction of \cref{thm:flute}.  The following criteria are
+pre-registered:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Scenario & Decision & Action \\
+\midrule
+$\sigk^{(z)} \lesssim C e^{-\alpha k}$,\;
+  $\alpha > \alpha_\mathrm{pred}/2$ & Confirmed & Proceed to Phase~2A (DLRA) \\
+$\sigk^{(z)} \sim k^{-p}$,\; $p < 3$ & Falsified & Proceed to Phase~2B (full-rank) \\
+$\alpha < \alpha_\mathrm{pred}/2$ & Weak confirmation & DLRA at $R = 64$; assess \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The analytical prediction $\alpha_\mathrm{pred} \approx 0.011$ from
+\cref{rem:numerical} is sealed.  Reporting the discrepancy (if any) is
+mandatory regardless of its implications for the Nature submission.
+
+% ============================================================
+\section{Summary of Sealed Predictions}
+\label{sec:summary}
+% ============================================================
+
+\begin{tcolorbox}[colback=blue!5, colframe=blue!60!black, title=Sealed analytical predictions (Phase~0)]
+\begin{align}
+  \sigk^{(z)}(t) &\lesssim C\,e^{-\alpha k},
+  \quad \alpha \approx 0.011 \tag{P1}\label{pred:decay} \\[4pt]
+  \alpha(\di,\eps) &= \tfrac{1}{2}(\eta_4 T_\mathrm{run})^{1/4} / N_z^{1/2}
+  \tag{P2}\label{pred:alpha} \\[4pt]
+  \eps_\mathrm{DLRA}(R=32) &\lesssim C_\mathrm{Hall}\,C\,e^{-33\alpha}
+  \tag{P3}\label{pred:dlra}
+\end{align}
+These three predictions are fixed and may not be altered post-measurement.
+\end{tcolorbox}
+
+% ============================================================
+\begin{thebibliography}{9}
+\bibitem{Constantin1988}
+P.~Constantin and C.~Foias,
+\textit{Navier--Stokes Equations},
+University of Chicago Press (1988).
+
+\bibitem{Hochbruck2010}
+M.~Hochbruck and A.~Ostermann,
+``Exponential integrators,''
+\textit{Acta Numerica} \textbf{19}, 209--286 (2010).
+
+\bibitem{Lubich2014}
+C.~Lubich and I.\,V.~Oseledets,
+``A projector-splitting integrator for dynamical low-rank approximation,''
+\textit{BIT Numer.\ Math.} \textbf{54}, 171--188 (2014).
+
+\bibitem{Halko2011}
+N.~Halko, P.\,G.~Martinsson, and J.\,A.~Tropp,
+``Finding structure with randomness: probabilistic algorithms
+for constructing approximate matrix decompositions,''
+\textit{SIAM Rev.} \textbf{53}, 217--288 (2011).
+\end{thebibliography}
+
+\end{document}
